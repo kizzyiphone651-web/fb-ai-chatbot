@@ -1,0 +1,28 @@
+{
+  "name": "fb-ai-chatbot",
+  "version": "1.0.0",
+  "description": "Facebook Page AI Chatbot powered by Google Gemini and Node.js",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --dns-result-order=ipv4first server.js",
+    "dev": "node --dns-result-order=ipv4first --watch server.js",
+    "test-chat": "node --dns-result-order=ipv4first test-chat.js",
+    "tunnel": "./cloudflared tunnel --url http://localhost:3000"
+  },
+  "keywords": [
+    "facebook",
+    "messenger",
+    "chatbot",
+    "gemini",
+    "ai",
+    "thai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^0.1.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

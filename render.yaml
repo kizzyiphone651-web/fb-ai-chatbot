@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: fb-ai-chatbot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PAGE_ACCESS_TOKEN
+        sync: false
+      - key: VERIFY_TOKEN
+        value: sumifun_bot_verify_token_2026
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
