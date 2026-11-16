@@ -14,9 +14,10 @@ import { getAiReply, loadKnowledge } from './src/gemini.js';
 import { sendTextMessage, sendImageMessage, sendAttachmentMessage, sendSenderAction } from './src/messenger.js';
 
 // Facebook Official Attachment IDs (ฝากรูปไว้บนระบบ Facebook โดยตรง รวดเร็ว แม่นยำ 100%)
-const ATTACHMENT_PRICE_PROMO = '899345116601483'; // รูปโปรโมชั่นราคา
-const ATTACHMENT_REVIEW_NECK = '1429788032571150'; // รูปรีวิวก่อน-หลัง
-const ATTACHMENT_BCEL_QR = '1686718566226227';    // รูป QR Code BCEL One
+const ATTACHMENT_PRICE_PROMO = '1709619427544991';  // รูปโปรโมชั่นราคา
+const ATTACHMENT_REVIEW_NECK = '2391971784876972';  // รูปรีวิวก่อน-หลัง 1
+const ATTACHMENT_REVIEW_NECK2 = '1129565523305184'; // รูปรีวิวก่อน-หลัง 2 (รูปใหม่ล่าสุด)
+const ATTACHMENT_BCEL_QR = '29562296090050097';     // รูป QR Code BCEL One
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -135,7 +136,7 @@ app.post('/webhook', async (req, res) => {
           if (isAskingReview) {
             console.log(`📸 ส่งรูปภาพรีวิวให้ลูกค้า [${senderPsid}]`);
             await sendAttachmentMessage(senderPsid, ATTACHMENT_REVIEW_NECK);
-            await sendImageMessage(senderPsid, `https://sumifun-chatbot.onrender.com/images/review_neck2.jpg`);
+            await sendAttachmentMessage(senderPsid, ATTACHMENT_REVIEW_NECK2);
           }
 
           // 3. ตรวจสอบว่าลูกค้าเลือกโอนเงิน หรือขอ QR Code หรือไม่ -> ส่งรูป QR Code BCEL One
