@@ -11,12 +11,13 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 import express from 'express';
 import { getAiReply, loadKnowledge } from './src/gemini.js';
-import { sendTextMessage, sendSenderAction } from './src/messenger.js';
+import { sendTextMessage, sendImageMessage, sendSenderAction } from './src/messenger.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
 
 // หน้าแรกแสดงสถานะของระบบ
 app.get('/', (req, res) => {
@@ -95,6 +96,19 @@ app.post('/webhook', async (req, res) => {
           // ปิดสถานะกำลังพิมพ์ และส่งข้อความตอบกลับ
           await sendSenderAction(senderPsid, 'typing_off');
           await sendTextMessage(senderPsid, aiReply);
+
+          // ตรวจสอบว่าลูกค้าขอดูรีวิวหรือไม่ ถ้าใช่ ให้ส่งรูปภาพรีวิวด้วย
+          const isAskingReview = userText.includes('ລີວິວ') || 
+                                 userText.includes('ຣີວິວ') || 
+                                 userText.includes('รีวิว') || 
+                                 userText.toLowerCase().includes('review');
+
+          if (isAskingReview) {
+            const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sumifun-chatbot.onrender.com';
+            console.log(`📸 ส่งรูปภาพรีวิวให้ลูกค้า [${senderPsid}]`);
+            await sendImageMessage(senderPsid, `${baseUrl}/images/review1.jpg`);
+            await sendImageMessage(senderPsid, `${baseUrl}/images/review2.jpg`);
+          }
         } catch (error) {
           console.error('❌ เกิดข้อผิดพลาดในการประมวลผลข้อความ:', error);
           await sendSenderAction(senderPsid, 'typing_off');

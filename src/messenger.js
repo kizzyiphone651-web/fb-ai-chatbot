@@ -84,3 +84,41 @@ export async function sendTextMessage(recipientId, messageText) {
 
   return true;
 }
+
+// ส่งข้อความรูปภาพหาผู้ใช้ (ผ่าน URL)
+export async function sendImageMessage(recipientId, imageUrl) {
+  const pageAccessToken = process.env.PAGE_ACCESS_TOKEN;
+  if (!pageAccessToken || pageAccessToken.includes('your_facebook')) {
+    console.warn('⚠️ ยังไม่ได้ตั้งค่า PAGE_ACCESS_TOKEN');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${GRAPH_API_URL}?access_token=${pageAccessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        message: {
+          attachment: {
+            type: 'image',
+            payload: {
+              url: imageUrl,
+              is_reusable: true
+            }
+          }
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('Facebook Send Image API Error:', data);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error sending Facebook image:', error.message);
+    return false;
+  }
+}
