@@ -97,17 +97,48 @@ app.post('/webhook', async (req, res) => {
           await sendSenderAction(senderPsid, 'typing_off');
           await sendTextMessage(senderPsid, aiReply);
 
-          // ตรวจสอบว่าลูกค้าขอดูรีวิวหรือไม่ ถ้าใช่ ให้ส่งรูปภาพรีวิวด้วย
+          const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sumifun-chatbot.onrender.com';
+          const lowerText = userText.toLowerCase();
+
+          // 1. ตรวจสอบว่าลูกค้าถามราคา หรือโปรโมชั่นหรือไม่ -> ส่งรูปตารางโปรโมชั่นราคา
+          const isAskingPrice = userText.includes('ລາຄາ') || 
+                                userText.includes('ໂປຣ') || 
+                                userText.includes('ເທົ່າໃດ') || 
+                                userText.includes('ราคา') || 
+                                userText.includes('โปร') || 
+                                userText.includes('เท่าไหร่') ||
+                                lowerText.includes('price');
+
+          // ถ้าลูกค้าเพิ่งแจ้งสั่งซื้อ (มีเบอร์โทรหรือที่อยู่) เราจะไม่ส่งรูปราคาซ้ำ
+          const isOrdering = userText.includes('020') || userText.includes('030') || userText.includes('ບ້ານ') || userText.includes('ແຂວງ') || userText.includes('ສົ່ງແດ່');
+
+          if (isAskingPrice && !isOrdering) {
+            console.log(`📸 ส่งรูปภาพโปรโมชั่นราคาให้ลูกค้า [${senderPsid}]`);
+            await sendImageMessage(senderPsid, `${baseUrl}/images/price_promo.jpg`);
+          }
+
+          // 2. ตรวจสอบว่าลูกค้าขอดูรีวิวหรือไม่ -> ส่งรูปภาพรีวิวก่อน-หลัง
           const isAskingReview = userText.includes('ລີວິວ') || 
                                  userText.includes('ຣີວິວ') || 
                                  userText.includes('รีวิว') || 
-                                 userText.toLowerCase().includes('review');
+                                 lowerText.includes('review');
 
           if (isAskingReview) {
-            const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sumifun-chatbot.onrender.com';
             console.log(`📸 ส่งรูปภาพรีวิวให้ลูกค้า [${senderPsid}]`);
-            await sendImageMessage(senderPsid, `${baseUrl}/images/review1.jpg`);
-            await sendImageMessage(senderPsid, `${baseUrl}/images/review2.jpg`);
+            await sendImageMessage(senderPsid, `${baseUrl}/images/review_neck.jpg`);
+          }
+
+          // 3. ตรวจสอบว่าลูกค้าเลือกโอนเงิน หรือขอ QR Code หรือไม่ -> ส่งรูป QR Code BCEL One
+          const isAskingTransfer = userText.includes('ໂອນ') || 
+                                   userText.includes('โอน') || 
+                                   userText.includes('ເລກບັນຊີ') || 
+                                   userText.includes('เลขบัญชี') || 
+                                   lowerText.includes('qr') || 
+                                   lowerText.includes('bcel');
+
+          if (isAskingTransfer) {
+            console.log(`📸 ส่งรูปภาพ QR Code BCEL One ให้ลูกค้า [${senderPsid}]`);
+            await sendImageMessage(senderPsid, `${baseUrl}/images/bcel_qr.png`);
           }
         } catch (error) {
           console.error('❌ เกิดข้อผิดพลาดในการประมวลผลข้อความ:', error);
