@@ -124,14 +124,18 @@ app.post('/webhook', async (req, res) => {
           // 2. ตรวจสอบว่าลูกค้าขอดูรีวิวหรือไม่ -> ส่งรูปภาพรีวิวก่อน-หลัง
           const isAskingReview = userText.includes('ລີວິວ') || 
                                  userText.includes('ຣີວິວ') || 
+                                 userText.includes('ລີວຶວ') || 
+                                 userText.includes('ຣີວຶວ') || 
                                  userText.includes('ຮູບລີວິວ') || 
+                                 userText.includes('ຮູບລີວຶວ') || 
                                  userText.includes('ຮູບ') || 
                                  userText.includes('รีวิว') || 
                                  lowerText.includes('review');
 
           if (isAskingReview) {
-            console.log(`📸 ส่งรูปภาพรีวิวให้ลูกค้า [${senderPsid}] (Attachment ID: ${ATTACHMENT_REVIEW_NECK})`);
+            console.log(`📸 ส่งรูปภาพรีวิวให้ลูกค้า [${senderPsid}]`);
             await sendAttachmentMessage(senderPsid, ATTACHMENT_REVIEW_NECK);
+            await sendImageMessage(senderPsid, `https://sumifun-chatbot.onrender.com/images/review_neck2.jpg`);
           }
 
           // 3. ตรวจสอบว่าลูกค้าเลือกโอนเงิน หรือขอ QR Code หรือไม่ -> ส่งรูป QR Code BCEL One
