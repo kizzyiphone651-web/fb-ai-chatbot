@@ -74,9 +74,13 @@ app.post('/webhook', async (req, res) => {
       const senderPsid = webhookEvent.sender?.id;
       const message = webhookEvent.message;
 
-      // ตรวจสอบว่ามีข้อความเข้ามา และไม่ใช่ข้อความ echo ที่บอทส่งเอง
-      if (message && message.text && !message.is_echo) {
-        const userText = message.text;
+      // ตรวจสอบข้อความ หรือการกดปุ่มคำถาม (Postback)
+      let userText = message && !message.is_echo ? message.text : null;
+      if (!userText && webhookEvent.postback) {
+        userText = webhookEvent.postback.title || webhookEvent.postback.payload;
+      }
+
+      if (userText) {
         console.log(`📩 ได้รับข้อความจาก [${senderPsid}]: ${userText}`);
 
         // ส่ง Action: อ่านแล้ว + กำลังพิมพ์...
