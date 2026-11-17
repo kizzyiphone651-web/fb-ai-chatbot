@@ -99,23 +99,34 @@ ${knowledge}
       }
     };
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
 
+    // หากเกิด Error หรือ Rate Limit ให้ลองใหม่อีกครั้งใน 1.5 วินาที
+    if (!response.ok) {
+      console.warn(`⚠️ Gemini API warning (${response.status}), retrying in 1.5s...`);
+      await new Promise(r => setTimeout(r, 1500));
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
     if (!response.ok) {
       const errText = await response.text();
       console.error(`Gemini API Error (${response.status}):`, errText);
-      return 'ขออภัยค่ะ ขณะนี้ระบบกำลังมีปัญหาการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง หรือรอแอดมินเข้ามาดูแลนะคะ';
+      return 'ສະບາຍດີເຈົ້າ! ຍິນດີຕ້ອນຮັບສູ່ຮ້ານ Sumifun Lipoma Cream ຄີມສະຫຼາຍກ້ອນໄຂມັນໃຕ້ຜິວໜັງ 🌿 ດຽວນີ້ແອດມິນກຳລັງກວດສອບຂໍ້ມູນໃຫ້ເດີ້ເຈົ້າ ສົນໃຈສອບຖາມລາຄາ ຫຼື ໂປຣໂມຊັ່ນຕົວໃດແຈ້ງໄວ້ໄດ້ເລີຍຈ້າ 🙏✨';
     }
 
     const data = await response.json();
     const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!replyText) {
-      return 'ขออภัยค่ะ ไม่สามารถประมวลผลคำตอบได้ในขณะนี้';
+      return 'ສະບາຍດີເຈົ້າ! ຍິນດີຕ້ອນຮັບສູ່ຮ້ານ Sumifun Lipoma Cream 🌿 ສົນໃຈສອບຖາມລາຄາ ຫຼື ໂປຣໂມຊັ່ນຕົວໃດບອກແອດມິນໄດ້ເລີຍເດີ້ຈ້າ 🙏';
     }
 
     // บันทึกลงประวัติการสนทนา

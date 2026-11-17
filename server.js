@@ -22,6 +22,9 @@ const ATTACHMENT_BCEL_QR = '29562296090050097';     // รูป QR Code BCEL On
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// แคชป้องกันการตอบข้อความซ้ำ (Message Deduplication Cache)
+const processedMids = new Set();
+
 app.use(express.json());
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 
@@ -75,20 +78,32 @@ app.post('/webhook', async (req, res) => {
     res.status(200).send('EVENT_RECEIVED');
 
     for (const entry of body.entry || []) {
-      const webhookEvent = entry.messaging?.[0];
-      if (!webhookEvent) continue;
+      for (const webhookEvent of entry.messaging || []) {
+        const senderPsid = webhookEvent.sender?.id;
+        const message = webhookEvent.message;
 
-      const senderPsid = webhookEvent.sender?.id;
-      const message = webhookEvent.message;
+        // ไม่ประมวลผลข้อความ echo ที่เพจส่งเอง หรือข้อความจากตัวเพจเอง
+        if (message?.is_echo || senderPsid === '1320277404483712') {
+          continue;
+        }
 
-      // ตรวจสอบข้อความ หรือการกดปุ่มคำถาม (Postback)
-      let userText = message && !message.is_echo ? message.text : null;
-      if (!userText && webhookEvent.postback) {
-        userText = webhookEvent.postback.title || webhookEvent.postback.payload;
-      }
+        // ป้องกันการประมวลผลข้อความซ้ำ (Deduplication)
+        const mid = message?.mid || `${senderPsid}_${webhookEvent.timestamp}`;
+        if (processedMids.has(mid)) {
+          console.log(`⏩ ข้ามข้อความซ้ำ [${mid}]`);
+          continue;
+        }
+        processedMids.add(mid);
+        setTimeout(() => processedMids.delete(mid), 10 * 60 * 1000);
 
-      if (userText) {
-        console.log(`📩 ได้รับข้อความจาก [${senderPsid}]: ${userText}`);
+        // ตรวจสอบข้อความ หรือการกดปุ่มคำถาม (Postback)
+        let userText = message ? message.text : null;
+        if (!userText && webhookEvent.postback) {
+          userText = webhookEvent.postback.title || webhookEvent.postback.payload;
+        }
+
+        if (userText) {
+          console.log(`📩 ได้รับข้อความจาก [${senderPsid}]: ${userText}`);
 
         // ส่ง Action: อ่านแล้ว + กำลังพิมพ์...
         await sendSenderAction(senderPsid, 'mark_seen');
@@ -154,11 +169,12 @@ app.post('/webhook', async (req, res) => {
         } catch (error) {
           console.error('❌ เกิดข้อผิดพลาดในการประมวลผลข้อความ:', error);
           await sendSenderAction(senderPsid, 'typing_off');
-          await sendTextMessage(senderPsid, 'ขออภัยค่ะ เกิดข้อผิดพลาดชั่วคราว เจ้าหน้าที่จะรีบเข้ามาดูแลนะคะ');
+          await sendTextMessage(senderPsid, 'ສະບາຍດີເຈົ້າ! ຍິນດີຕ້ອນຮັບສູ່ຮ້ານ Sumifun Lipoma Cream ດຽວນີ້ແອດມິນກຳລັງກວດສອບຂໍ້ມູນໃຫ້ເດີ້ເຈົ້າ ສົນໃຈສອບຖາມລາຄາ ຫຼື ໂປຣໂມຊັ່ນຕົວໃດແຈ້ງໄວ້ໄດ້ເລີຍຈ້າ 🙏✨');
         }
       }
     }
-  } else {
+  }
+} else {
     res.sendStatus(404);
   }
 });
