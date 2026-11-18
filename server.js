@@ -15,7 +15,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 import express from 'express';
 import { getAiReply, loadKnowledge } from './src/gemini.js';
-import { sendTextMessage, sendImageMessage, sendAttachmentMessage, sendSenderAction } from './src/messenger.js';
+import { sendTextMessage, sendImageMessage, sendAttachmentMessage, sendSenderAction, replyToComment, sendPrivateReply } from './src/messenger.js';
 
 // Facebook Official Attachment IDs (ฝากรูปไว้บนระบบ Facebook โดยตรง รวดเร็ว แม่นยำ 100%)
 const ATTACHMENT_PRICE_PROMO = '1709619427544991';  // รูปโปรโมชั่นราคา
@@ -29,6 +29,8 @@ const PORT = process.env.PORT || 3000;
 
 // แคชป้องกันการตอบข้อความซ้ำ (Message Deduplication Cache)
 const processedMids = new Set();
+// แคชป้องกันการตอบคอมเมนต์ซ้ำ (Comment Deduplication Cache)
+const processedCommentIds = new Set();
 
 app.use(express.json());
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
@@ -154,7 +156,30 @@ async function handleIncomingMessage(senderPsid, userText, mid) {
   }
 }
 
-// 2. รับข้อความแชตจาก Facebook Webhook
+// ฟังก์ชันจัดการคอมเมนต์ใหม่ (ตอบใต้โพสต์สาธารณะ + ส่งข้อความดึงเข้า Inbox ทันที)
+async function handleIncomingComment(commentId, commentText, senderName) {
+  try {
+    // 1. ตอบกลับสาธารณะใต้คอมเมนต์ (Lao 100%)
+    const publicReplyText = `ສະບາຍດີເຈົ້າ 🙏 Sumifun Lipoma Cream ຄີມສະຫຼາຍກ້ອນໄຂມັນໃຕ້ຜິວໜັງ 🌿 ແອດມິນສົ່ງລາຍລະອຽດລາຄາ ແລະ ໂປຣໂມຊັ່ນພິເສດເຂົ້າໄປໃນກ່ອງຂໍ້ຄວາມ (Inbox) ໃຫ້ແລ້ວເດີ້ເຈົ້າ ກວດເບິ່ງແຊັດໄດ້ເລີຍຈ້າ 😊✨`;
+    await replyToComment(commentId, publicReplyText);
+
+    // 2. ส่งข้อความเปิดการขายทักเข้า Inbox ทันที (Private Reply พร้อมโปรโมชั่นและจิตวิทยา)
+    const privateReplyText = `ສະບາຍດີເຈົ້າ! ຍິນດີຕ້ອນຮັບສູ່ຮ້ານ Sumifun Lipoma Cream 🧴✨ ແອດມິນເຫັນຄອມເມັ້ນຂອງລູກຄ້າແລ້ວເດີ້ເຈົ້າ
+
+ຕອນນີ້ເຮົາມີໂປຣໂມຊັ່ນພິເສດ:
+- ຊຸດທົດລອງ 1 ກ່ອງ: 139,000 ກີບ
+- ໂປຣ 2 ແຖມ 1 (ໄດ້ 3 ກ່ອງ): 270,000 ກີບ [ສຸດຄຸ້ມ]
+- ໂປຣ 3 ແຖມ 2 (ໄດ້ 5 ກ່ອງ): 390,000 ກີບ [ຂາຍດີສຸດ 🔥]
+
+ກ້ອນໄຂມັນ ຫຼື ກ້ອນຊີດ ຖ້າປະໄວ້ດົນ ມັນຈະໃຫຍ່ຂຶ້ນເລື້ອຍໆ ແລະ ອາດຕ້ອງໄດ້ຜ່າຕັດເຈັບໂຕເສຍເງິນຫຼາຍລ້ານກີບເດີ້ເຈົ້າ! ສົນໃຈຮັບໂປຣ 2 ແຖມ 1 ຫຼື 3 ແຖມ 2 ໄປທາໃຫ້ຍຸບໄວດີເຈົ້າ? 😊`;
+
+    await sendPrivateReply(commentId, privateReplyText);
+  } catch (err) {
+    console.error('❌ เกิดข้อผิดพลาดในการจัดการคอมเมนต์:', err.message);
+  }
+}
+
+// 2. รับข้อความแชตจาก Facebook Webhook (ทั้งข้อความแชต Messenger และคอมเมนต์ Feed)
 app.post('/webhook', async (req, res) => {
   const body = req.body;
 
@@ -162,6 +187,7 @@ app.post('/webhook', async (req, res) => {
     res.status(200).send('EVENT_RECEIVED');
 
     for (const entry of body.entry || []) {
+      // ก. รับข้อความแชต Messenger
       for (const webhookEvent of entry.messaging || []) {
         const senderPsid = webhookEvent.sender?.id;
         const message = webhookEvent.message;
@@ -183,6 +209,29 @@ app.post('/webhook', async (req, res) => {
         if (userText) {
           const mid = message?.mid || `${senderPsid}_${webhookEvent.timestamp}`;
           await handleIncomingMessage(senderPsid, userText, mid);
+        }
+      }
+
+      // ข. รับคอมเมนต์ใหม่ใต้โพสต์หรือโฆษณา (Feed Changes)
+      for (const change of entry.changes || []) {
+        if (change.field === 'feed') {
+          const value = change.value;
+          if (value?.item === 'comment' && value?.verb === 'add') {
+            const commentId = value.comment_id;
+            const senderId = value.sender_id || value.from?.id;
+            const commentText = value.message || '';
+
+            // ข้ามคอมเมนต์ที่เพจตอบเอง
+            if (senderId === PAGE_ID) continue;
+
+            // ป้องกันการตอบคอมเมนต์ซ้ำ
+            if (processedCommentIds.has(commentId)) continue;
+            processedCommentIds.add(commentId);
+            setTimeout(() => processedCommentIds.delete(commentId), 30 * 60 * 1000);
+
+            console.log(`💬 ตรวจพบคอมเมนต์ใหม่จาก [${value.sender_name || senderId}]: "${commentText}" (Comment ID: ${commentId})`);
+            await handleIncomingComment(commentId, commentText, value.sender_name);
+          }
         }
       }
     }

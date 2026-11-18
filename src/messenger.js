@@ -160,3 +160,63 @@ export async function sendImageMessage(recipientId, imageUrl) {
     return false;
   }
 }
+
+// 4. ตอบกลับคอมเมนต์สาธารณะใต้โพสต์/โฆษณา
+export async function replyToComment(commentId, messageText) {
+  const pageAccessToken = process.env.PAGE_ACCESS_TOKEN;
+  if (!pageAccessToken || pageAccessToken.includes('your_facebook')) {
+    console.warn('⚠️ ยังไม่ได้ตั้งค่า PAGE_ACCESS_TOKEN');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v21.0/${commentId}/comments?access_token=${pageAccessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: messageText
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('Facebook Reply Comment API Error:', data);
+      return false;
+    }
+    console.log(`💬 ตอบกลับคอมเมนต์สำเร็จ [${commentId}]`);
+    return true;
+  } catch (error) {
+    console.error('Error replying to comment:', error.message);
+    return false;
+  }
+}
+
+// 5. ส่งข้อความเปิดการขายเข้า Inbox ลูกค้าจากคอมเมนต์ (Private Reply)
+export async function sendPrivateReply(commentId, messageText) {
+  const pageAccessToken = process.env.PAGE_ACCESS_TOKEN;
+  if (!pageAccessToken || pageAccessToken.includes('your_facebook')) {
+    console.warn('⚠️ ยังไม่ได้ตั้งค่า PAGE_ACCESS_TOKEN');
+    return false;
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v21.0/${commentId}/private_replies?access_token=${pageAccessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: messageText
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('Facebook Private Reply API Error:', data);
+      return false;
+    }
+    console.log(`📥 ส่ง Private Reply เข้า Inbox ลูกค้าสำเร็จ [${commentId}]`);
+    return true;
+  } catch (error) {
+    console.error('Error sending private reply:', error.message);
+    return false;
+  }
+}
