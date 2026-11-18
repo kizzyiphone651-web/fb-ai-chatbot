@@ -21,7 +21,7 @@ import { sendTextMessage, sendImageMessage, sendAttachmentMessage, sendSenderAct
 const ATTACHMENT_PRICE_PROMO = '1709619427544991';  // รูปโปรโมชั่นราคา
 const ATTACHMENT_REVIEW_NECK = '2391971784876972';  // รูปรีวิวก่อน-หลัง 1
 const ATTACHMENT_REVIEW_NECK2 = '1129565523305184'; // รูปรีวิวก่อน-หลัง 2 (รูปใหม่ล่าสุด)
-const ATTACHMENT_BCEL_QR = '29562296090050097';     // รูป QR Code BCEL One
+const ATTACHMENT_BCEL_QR = '1673666074415434';     // รูป QR Code BCEL One (เวอร์ชันใหม่สีแดง Scan to pay)
 const PAGE_ID = process.env.PAGE_ID || '1320277404483712';
 
 const app = express();
