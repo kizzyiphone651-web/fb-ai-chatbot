@@ -175,6 +175,10 @@ app.post('/webhook', async (req, res) => {
         if (!userText && webhookEvent.postback) {
           userText = webhookEvent.postback.title || webhookEvent.postback.payload;
         }
+        // กรณีลูกค้าส่งรูปภาพมาอย่างเดียวโดยไม่มีข้อความ
+        if (!userText && message?.attachments) {
+          userText = '[ລູກຄ້າສົ່ງຮູບພາບກ້ອນໄຂມັນມາໃຫ້ເບິ່ງ]';
+        }
 
         if (userText) {
           const mid = message?.mid || `${senderPsid}_${webhookEvent.timestamp}`;
@@ -197,7 +201,7 @@ async function syncInbox() {
     const token = process.env.PAGE_ACCESS_TOKEN;
     if (!token || token.includes('your_')) return;
 
-    const url = `https://graph.facebook.com/v21.0/${PAGE_ID}/conversations?fields=id,updated_time,participants,messages.limit(2){id,created_time,from,message}&limit=10&access_token=${token}`;
+    const url = `https://graph.facebook.com/v21.0/${PAGE_ID}/conversations?fields=id,updated_time,participants,messages.limit(2){id,created_time,from,message,attachments}&limit=15&access_token=${token}`;
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();
@@ -210,7 +214,14 @@ async function syncInbox() {
       if (!customer || !lastMsg) continue;
 
       // ตรวจสอบว่าเป็นข้อความจากลูกค้า (ไม่ใช่เพจส่งเอง)
-      if (lastMsg.from?.id !== PAGE_ID && lastMsg.message) {
+      if (lastMsg.from?.id !== PAGE_ID) {
+        let text = lastMsg.message;
+        // กรณีลูกค้าส่งรูปภาพมาอย่างเดียวโดยไม่มีข้อความ
+        if (!text && lastMsg.attachments) {
+          text = '[ລູກຄ້າສົ່ງຮູບພາບກ້ອນໄຂມັນມາໃຫ້ເບິ່ງ]';
+        }
+        if (!text) continue;
+
         const mid = lastMsg.id;
 
         // ถ้าประมวลผลข้อความนี้ไปแล้ว ให้ข้าม
@@ -223,8 +234,8 @@ async function syncInbox() {
           continue;
         }
 
-        console.log(`📥 [Inbox Sync] ตรวจพบข้อความใหม่จากลูกค้า ${customer.name} (${customer.id}): "${lastMsg.message}"`);
-        await handleIncomingMessage(customer.id, lastMsg.message, mid);
+        console.log(`📥 [Inbox Sync] ตรวจพบข้อความใหม่จากลูกค้า ${customer.name} (${customer.id}): "${text}"`);
+        await handleIncomingMessage(customer.id, text, mid);
       }
     }
   } catch (err) {
